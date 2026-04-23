@@ -326,9 +326,73 @@ td {
   .header { padding: 16px 18px; }
   .table-wrap, .filters, .stats { padding-left: 14px; padding-right: 14px; }
 }
+
+#login-screen {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.login-box {
+  background: white;
+  border-radius: 24px;
+  padding: 40px 36px;
+  width: 360px;
+  max-width: 92vw;
+  box-shadow: 0 20px 60px rgba(233,30,99,0.18);
+  text-align: center;
+}
+.login-box h2 { font-size: 20px; color: #e91e8c; margin-bottom: 6px; }
+.login-box p  { font-size: 13px; color: #aaa; margin-bottom: 28px; }
+.login-field  { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; text-align: left; }
+.login-field label { font-size: 11px; color: #aaa; font-weight: 600; }
+.login-field input {
+  padding: 11px 14px;
+  border: 1.5px solid #f0d5e0;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+.login-field input:focus { border-color: #f06292; }
+.btn-login {
+  width: 100%;
+  background: linear-gradient(135deg, #f06292, #e91e63);
+  color: white;
+  border: none;
+  padding: 13px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.login-error { color: #e53935; font-size: 12px; margin-top: 10px; min-height: 18px; }
+#app { display: none; }
 </style>
 </head>
 <body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h2>🛍️ Hannah 代購訂單</h2>
+    <p>Brandy Melville &middot; Hollister</p>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="your@email.com" value="hayo1102@gmail.com">
+    </div>
+    <div class="login-field">
+      <label>密碼</label>
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-login" onclick="login()">登入</button>
+  </div>
+</div>
+
+<div id="app">
 
 <div class="header">
   <div>
@@ -339,6 +403,7 @@ td {
     <button class="btn-add" onclick="exportData()" style="background:rgba(255,255,255,0.2);font-size:13px;padding:8px 14px;">⬇ 備份</button>
     <label class="btn-add" style="background:rgba(255,255,255,0.2);font-size:13px;padding:8px 14px;cursor:pointer;">⬆ 匯入<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
     <button class="btn-add" onclick="openModal()">＋ 新增訂單</button>
+    <button class="btn-add" onclick="logout()" style="background:rgba(255,255,255,0.15);font-size:13px;padding:8px 14px;">登出</button>
   </div>
 </div>
 
@@ -439,6 +504,8 @@ td {
     </div>
   </div>
 </div>
+
+</div><!-- #app -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1102,7 +1169,36 @@ async function save() {
   }
 }
 
-load();
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  document.getElementById('login-error').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    document.getElementById('login-error').textContent = 'Email 或密碼錯誤，請再試一次';
+    return;
+  }
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  load();
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+  data = [];
+}
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    load();
+  }
+})();
 </script>
 </body>
 </html>
