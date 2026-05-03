@@ -1149,7 +1149,8 @@ async function save() {
     note:     document.getElementById('f-note').value.trim(),
   };
   if (editId) {
-    const idx = data.findIndex(x => x.id === editId);
+    const savedId = editId;
+    const idx = data.findIndex(x => x.id === savedId);
     data[idx] = { ...data[idx], ...row };
     closeModal();
     updateMonthTabs();
@@ -1157,7 +1158,7 @@ async function save() {
     render();
     const updatePayload = toRow(data[idx]);
     delete updatePayload.id;
-    const { error } = await sb.from('orders').update(updatePayload).eq('id', editId);
+    const { error } = await sb.from('orders').update(updatePayload).eq('id', savedId);
     if (error) {
       alert('⚠️ 儲存失敗，請重新整理後再試\n(' + error.message + ')');
       console.error('Update error:', error);
