@@ -1149,18 +1149,22 @@ async function save() {
     note:     document.getElementById('f-note').value.trim(),
   };
   if (editId) {
-    const savedId = editId;
-    const idx = data.findIndex(x => x.id === savedId);
+    const targetId = Number(editId);
+    const idx = data.findIndex(x => Number(x.id) === targetId);
+    if (idx === -1) {
+      alert('⚠️ 找不到訂單（id=' + targetId + '），請重新整理後再試');
+      return;
+    }
     data[idx] = { ...data[idx], ...row };
-    closeModal();
     updateMonthTabs();
     updateStats();
     render();
     const updatePayload = toRow(data[idx]);
     delete updatePayload.id;
-    const { error } = await sb.from('orders').update(updatePayload).eq('id', savedId);
+    const { error } = await sb.from('orders').update(updatePayload).eq('id', targetId);
+    closeModal();
     if (error) {
-      alert('⚠️ 儲存失敗，請重新整理後再試\n(' + error.message + ')');
+      alert('⚠️ 儲存失敗（id=' + targetId + '）\n' + error.message);
       console.error('Update error:', error);
     }
   } else {
