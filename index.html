@@ -1155,7 +1155,13 @@ async function save() {
     updateMonthTabs();
     updateStats();
     render();
-    await sb.from('orders').update(toRow(data[idx])).eq('id', editId);
+    const updatePayload = toRow(data[idx]);
+    delete updatePayload.id;
+    const { error } = await sb.from('orders').update(updatePayload).eq('id', editId);
+    if (error) {
+      alert('⚠️ 儲存失敗，請重新整理後再試\n(' + error.message + ')');
+      console.error('Update error:', error);
+    }
   } else {
     const newId = nextId();
     const newRow = { id: newId, ...row };
