@@ -782,13 +782,21 @@ function toRow(o) {
 
 async function load() {
   document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="no-data">載入中…</td></tr>';
-  const { data: rows, error } = await sb.from('orders').select('*').order('date').order('id').limit(10000);
-  if (error) {
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="no-data">載入失敗，請重新整理</td></tr>';
-    console.error(error);
-    return;
+  let allRows = [];
+  let from = 0;
+  const PAGE = 1000;
+  while (true) {
+    const { data: rows, error } = await sb.from('orders').select('*').order('date').order('id').range(from, from + PAGE - 1);
+    if (error) {
+      document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="no-data">載入失敗，請重新整理</td></tr>';
+      console.error(error);
+      return;
+    }
+    allRows = allRows.concat(rows);
+    if (rows.length < PAGE) break;
+    from += PAGE;
   }
-  data = rows.map(fromRow);
+  data = allRows.map(fromRow);
   updateMonthTabs();
   updateStats();
   render();
