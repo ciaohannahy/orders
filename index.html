@@ -1111,7 +1111,19 @@ async function save() {
     updateStats();
     render();
     const { error } = await sb.from('orders').insert(toRow(newRow));
-    if (error) console.error('Insert error:', error);
+    if (error) {
+      console.error('Insert error:', error);
+      data = data.filter(x => x.id !== newRow.id);
+      updateMonthTabs();
+      updateStats();
+      render();
+      if (error.message && (error.message.includes('JWT') || error.message.includes('auth') || error.message.includes('token'))) {
+        alert('⚠️ 登入已過期，訂單未儲存！\n請重新登入後再新增。');
+        logout();
+      } else {
+        alert('⚠️ 訂單新增失敗：' + error.message + '\n請重新整理後再試。');
+      }
+    }
   }
 }
 
@@ -1348,6 +1360,14 @@ async function logout() {
   document.getElementById('login-password').value = '';
   data = []; costsData = [];
 }
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    data = []; costsData = [];
+  }
+});
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
