@@ -88,6 +88,8 @@ body {
   color: white;
   box-shadow: 0 3px 10px rgba(233, 30, 99, 0.3);
 }
+.month-tab.batch { border-style: dashed; }
+.month-tab-divider { flex: none; width: 1px; margin: 4px 2px; background: #f0d5e0; }
 
 .filters {
   display: flex;
@@ -696,6 +698,7 @@ td {
       <div class="fg"><label>成本（NT$）</label><input type="number" id="f-cost" placeholder="0" min="0"></div>
       <div class="fg"><label>售價（NT$）</label><input type="number" id="f-price" placeholder="0" min="0"></div>
       <div class="fg full"><label>備註</label><input type="text" id="f-note" placeholder="尺寸、顏色…"></div>
+      <div class="fg full"><label>檔期（一般訂單留空）</label><input type="text" id="f-batch" list="batchList" placeholder="例：維密"><datalist id="batchList"></datalist></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">取消</button>
@@ -759,6 +762,7 @@ function fromRow(r) {
     note: r.note || '',
     bought: r.bought || 'no',
     invoiced: r.invoiced || 'no',
+    batch: r.batch || '',
   };
 }
 
@@ -777,6 +781,7 @@ function toRow(o) {
     note: o.note || '',
     bought: o.bought || 'no',
     invoiced: o.invoiced || 'no',
+    batch: o.batch || '',
   };
 }
 
@@ -863,13 +868,20 @@ function calcProfit(o) {
   return `<span class="profit">NT$${p.toLocaleString()}</span>`;
 }
 
+// selectedMonth: '' = 全部, 'YYYY-MM' = 月份（不含檔期訂單）, 'batch:名稱' = 檔期
+function inView(o) {
+  if (!selectedMonth) return true;
+  if (selectedMonth.startsWith('batch:')) return o.batch === selectedMonth.slice(6);
+  return !o.batch && o.date.startsWith(selectedMonth);
+}
+
 function filtered() {
   const q = document.getElementById('q').value.toLowerCase();
   const st = document.getElementById('fStatus').value;
   const bt = document.getElementById('fBought').value;
   const inv = document.getElementById('fInvoice').value;
   return data.filter(o => {
-    if (selectedMonth && !o.date.startsWith(selectedMonth)) return false;
+    if (!inView(o)) return false;
     if (st && o.status !== st) return false;
     if (bt && (o.bought || 'no') !== bt) return false;
     if (inv && (o.invoiced || 'no') !== inv) return false;
@@ -882,7 +894,8 @@ function filtered() {
 }
 
 function updateMonthTabs() {
-  const months = [...new Set(data.map(o => o.date.slice(0, 7)))].sort().reverse();
+  const months = [...new Set(data.filter(o => !o.batch).map(o => o.date.slice(0, 7)))].sort().reverse();
+  const batches = [...new Set(data.map(o => o.batch).filter(Boolean))].sort();
   const container = document.getElementById('monthTabs');
   const all = `<div class="month-tab ${selectedMonth === '' ? 'active' : ''}" onclick="selectMonth('')">全部</div>`;
   const tabs = months.map(m => {
@@ -892,7 +905,13 @@ function updateMonthTabs() {
     const label = yr === curYear ? `${mo}月` : `${yr}/${mo}月`;
     return `<div class="month-tab ${selectedMonth === m ? 'active' : ''}" onclick="selectMonth('${m}')">${label}</div>`;
   }).join('');
-  container.innerHTML = all + tabs;
+  const batchTabs = batches.map(b => {
+    const key = 'batch:' + b;
+    return `<div class="month-tab batch ${selectedMonth === key ? 'active' : ''}" onclick="selectMonth('${key}')">${b}</div>`;
+  }).join('');
+  const divider = batches.length ? '<div class="month-tab-divider"></div>' : '';
+  container.innerHTML = all + batchTabs + divider + tabs;
+  document.getElementById('batchList').innerHTML = batches.map(b => `<option value="${b}">`).join('');
 }
 
 function selectMonth(m) {
@@ -903,7 +922,7 @@ function selectMonth(m) {
 }
 
 function updateStats() {
-  const rows = selectedMonth ? data.filter(o => o.date.startsWith(selectedMonth)) : data;
+  const rows = data.filter(inView);
   document.getElementById('s-total').textContent = rows.length;
   document.getElementById('s-unpaid').textContent = rows.filter(o => o.status === 'unpaid').length;
   document.getElementById('s-paid').textContent   = rows.filter(o => o.status === 'paid').length;
@@ -1044,6 +1063,7 @@ function openModal(id = null) {
     document.getElementById('f-bought').value   = o.bought || 'no';
     document.getElementById('f-status').value   = o.status;
     document.getElementById('f-note').value     = o.note;
+    document.getElementById('f-batch').value    = o.batch || '';
   } else {
     const today = new Date();
     const ymd = today.toLocaleDateString('sv-SE', {timeZone:'Asia/Taipei'});
@@ -1058,6 +1078,7 @@ function openModal(id = null) {
     document.getElementById('f-bought').value   = 'no';
     document.getElementById('f-status').value   = 'unpaid';
     document.getElementById('f-note').value     = '';
+    document.getElementById('f-batch').value    = selectedMonth.startsWith('batch:') ? selectedMonth.slice(6) : '';
   }
   document.getElementById('overlay').classList.add('on');
 }
@@ -1090,6 +1111,7 @@ async function save() {
     bought:   document.getElementById('f-bought').value,
     status:   document.getElementById('f-status').value,
     note:     document.getElementById('f-note').value.trim(),
+    batch:    document.getElementById('f-batch').value.trim(),
   };
   if (editId) {
     const targetId = Number(editId);
